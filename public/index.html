@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Online Voting System</title>
+<style>
+  :root {
+    --navy: #1c3557; --navy2: #2b4a73; --green: #2a7f62; --ink: #1b2430; --muted: #5d6b7a;
+    --bg: #f5f7fa; --line: #d5dce5; --bad: #b3261e; --bjp: #e8751a; --inc: #1a8a4a; --nota: #6b7480;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--ink); }
+  h1, h2, h3, .brand span, .hero h2 { font-family: Georgia, "Times New Roman", serif; }
+  .hide { display: none !important; }
+  .tricolor { height: 10px; background: linear-gradient(to bottom, #FF9933 0 33.3%, #ffffff 33.3% 66.6%, #138808 66.6% 100%); }
+
+  nav.top { background: var(--navy); color: #fff; display: flex; align-items: center; justify-content: space-between; padding: 14px 32px; flex-wrap: wrap; gap: 10px; }
+  .brand { display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; font-size: 1.5rem; font-weight: 700; cursor: pointer; background: none; border: 0; padding: 0; }
+  .chakra { border-radius: 50%; flex: none; }
+  .links { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .nl { background: none; border: 0; border-bottom: 2px solid transparent; color: #fff; font-size: 1rem; padding: 6px 8px; cursor: pointer; }
+  .nl.active { border-bottom-color: #fff; }
+  .nl.out { border: 1px solid #fff; border-radius: 6px; padding: 6px 12px; margin-left: 8px; }
+
+  .shell { max-width: 1060px; margin: 22px auto; display: grid; grid-template-columns: 1fr 1fr; background: #fff; border: 1px solid var(--line); border-radius: 14px; overflow: hidden; min-height: 640px; }
+  .shell.wide { grid-template-columns: 1fr; }
+  .shell.wide .hero { display: none; }
+  .hero { background: var(--navy); color: #fff; padding: 44px; display: flex; flex-direction: column; justify-content: center; gap: 14px; }
+  .hero h2 { margin: 6px 0 0; font-size: 2.1rem; }
+  .hero p { margin: 0; max-width: 300px; line-height: 1.5; color: #dbe5f2; }
+  .slogan { margin-top: 18px; font-weight: 700; letter-spacing: .14em; }
+  .slogan span { display: block; height: 4px; width: 100px; margin-top: 8px; border-radius: 2px; background: linear-gradient(to right, #FF9933 33.3%, #ffffff 33.3% 66.6%, #138808 66.6%); }
+  .jai { color: #dbe5f2; letter-spacing: .2em; font-size: .9rem; }
+
+  .panel { padding: 32px; display: flex; align-items: center; justify-content: center; background: var(--bg); }
+  .view { width: 100%; display: flex; justify-content: center; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 10px; padding: 26px; width: 100%; max-width: 440px; }
+  .shell.wide .card { max-width: none; }
+  .card h2 { margin: 0 0 6px; font-size: 1.6rem; color: var(--navy); }
+  .card h3 { margin: 22px 0 10px; font-size: 1.1rem; color: var(--navy); }
+  .sub { margin: 0 0 16px; color: var(--muted); }
+
+  label { display: block; font-weight: 600; font-size: .95rem; margin: 14px 0 6px; }
+  input, select { width: 100%; padding: 12px 14px; border: 1px solid var(--line); border-radius: 6px; font-size: 1rem; background: #fff; color: var(--ink); }
+  input:focus, select:focus, button:focus-visible { outline: 3px solid #9cb7dd; outline-offset: 1px; }
+  .pw { position: relative; }
+  .pw input { padding-right: 46px; }
+  .eye { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); background: none; border: 0; cursor: pointer; padding: 6px; color: var(--navy); display: flex; }
+
+  .btn { width: 100%; padding: 13px; margin-top: 18px; border: 1px solid var(--navy); border-radius: 6px; background: var(--navy); color: #fff; font-size: 1rem; cursor: pointer; }
+  .btn:hover { filter: brightness(1.15); }
+  .btn.ghost { background: #fff; color: var(--navy); }
+  .btn.ghost:hover { background: #eef3fa; filter: none; }
+  .help { margin-top: 16px; text-align: center; color: var(--muted); font-size: .95rem; }
+  .help .btn { margin-top: 8px; }
+  .linkbtn { background: none; border: 0; color: var(--navy); text-decoration: underline; cursor: pointer; font-size: .95rem; padding: 0; margin-top: 14px; }
+
+  .secure { margin-top: 16px; display: flex; gap: 12px; align-items: center; background: #eaf5f0; border-radius: 8px; padding: 12px 14px; color: var(--green); }
+  .secure b { display: block; }
+  .secure small { color: var(--muted); }
+
+  .msg { margin-top: 14px; padding: 10px 12px; border-radius: 6px; font-size: .95rem; }
+  .msg.err { background: #fbe9e7; color: var(--bad); }
+  .msg.ok { background: #e6f4ea; color: #146c2e; }
+  .msg.warn { background: #fff4e0; color: #8a5a00; }
+
+  .opt { display: flex; align-items: center; gap: 14px; padding: 16px 18px; margin: 10px 0; border: 2px solid var(--line); border-radius: 8px; cursor: pointer; font-size: 1.1rem; font-weight: 600; font-family: inherit; background: #fff; width: 100%; text-align: left; }
+  .opt:hover { border-color: var(--navy2); }
+  .opt.sel { border-color: var(--navy); background: #eef3fa; }
+  .opt i { width: 16px; height: 16px; border-radius: 50%; flex: none; }
+  .done { text-align: center; padding: 10px 0; }
+  .done h3 { font-size: 1.4rem; margin: 6px 0; }
+
+  .tabs { display: flex; gap: 6px; margin: 14px 0 6px; border-bottom: 1px solid var(--line); }
+  .tab { background: none; border: 0; padding: 10px 16px; font-size: 1rem; cursor: pointer; border-bottom: 3px solid transparent; color: var(--muted); }
+  .tab.active { color: var(--navy); border-bottom-color: var(--navy); font-weight: 600; }
+  .row { margin: 14px 0; }
+  .row .top { display: flex; justify-content: space-between; font-weight: 600; margin-bottom: 5px; }
+  .bar { height: 14px; background: #e9eef4; border-radius: 7px; overflow: hidden; }
+  .bar > span { display: block; height: 100%; width: 0; transition: width .5s; }
+  .total { margin-top: 14px; color: var(--muted); }
+
+  .addrow { display: grid; grid-template-columns: 1fr 1.4fr 1fr auto; gap: 10px; align-items: end; }
+  .addrow .btn { margin: 0; width: auto; padding: 12px 18px; }
+  .addrow label { margin-top: 0; }
+  .tablewrap { overflow-x: auto; margin-top: 16px; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  th { background: #eef3fa; color: var(--navy); font-size: .9rem; }
+  .pill { padding: 3px 10px; border-radius: 12px; background: #eceff3; color: var(--muted); font-size: .85rem; }
+  .pill.ok { background: #e6f4ea; color: #146c2e; }
+  .del { background: #fff; border: 1px solid var(--bad); color: var(--bad); border-radius: 6px; padding: 5px 12px; cursor: pointer; }
+  .del:hover { background: #fbe9e7; }
+  .empty { color: var(--muted); text-align: center; padding: 22px; }
+
+  footer { background: var(--navy); color: #fff; text-align: center; padding: 22px 12px; margin-top: 26px; }
+  footer .jb { display: block; letter-spacing: .2em; font-weight: 700; margin-bottom: 6px; }
+
+  @media (max-width: 860px) {
+    .shell { grid-template-columns: 1fr; min-height: 0; margin: 12px; }
+    .hero { padding: 28px; }
+    .panel { padding: 16px; }
+    .addrow { grid-template-columns: 1fr; }
+    .addrow .btn { width: 100%; }
+    nav.top { padding: 12px 16px; }
+    .brand { font-size: 1.2rem; }
+  }
+  @media (prefers-reduced-motion: reduce) { .bar > span { transition: none; } }
+</style>
+</head>
+<body>
+<div class="tricolor"></div>
+<nav class="top">
+  <button class="brand" id="brand" aria-label="Home"><svg class="chakra" width="40" height="40" viewBox="0 0 100 100" role="img" aria-label="Ashoka Chakra"><circle cx="50" cy="50" r="48" fill="#fff" stroke="none"/><g stroke="#000080" stroke-width="1.6" fill="none"><circle cx="50" cy="50" r="42"/><circle cx="50" cy="50" r="8" fill="#000080"/><line x1="59.00" y1="50.00" x2="92.00" y2="50.00"/><line x1="58.69" y1="52.33" x2="90.57" y2="60.87"/><line x1="57.79" y1="54.50" x2="86.37" y2="71.00"/><line x1="56.36" y1="56.36" x2="79.70" y2="79.70"/><line x1="54.50" y1="57.79" x2="71.00" y2="86.37"/><line x1="52.33" y1="58.69" x2="60.87" y2="90.57"/><line x1="50.00" y1="59.00" x2="50.00" y2="92.00"/><line x1="47.67" y1="58.69" x2="39.13" y2="90.57"/><line x1="45.50" y1="57.79" x2="29.00" y2="86.37"/><line x1="43.64" y1="56.36" x2="20.30" y2="79.70"/><line x1="42.21" y1="54.50" x2="13.63" y2="71.00"/><line x1="41.31" y1="52.33" x2="9.43" y2="60.87"/><line x1="41.00" y1="50.00" x2="8.00" y2="50.00"/><line x1="41.31" y1="47.67" x2="9.43" y2="39.13"/><line x1="42.21" y1="45.50" x2="13.63" y2="29.00"/><line x1="43.64" y1="43.64" x2="20.30" y2="20.30"/><line x1="45.50" y1="42.21" x2="29.00" y2="13.63"/><line x1="47.67" y1="41.31" x2="39.13" y2="9.43"/><line x1="50.00" y1="41.00" x2="50.00" y2="8.00"/><line x1="52.33" y1="41.31" x2="60.87" y2="9.43"/><line x1="54.50" y1="42.21" x2="71.00" y2="13.63"/><line x1="56.36" y1="43.64" x2="79.70" y2="20.30"/><line x1="57.79" y1="45.50" x2="86.37" y2="29.00"/><line x1="58.69" y1="47.67" x2="90.57" y2="39.13"/></g><circle cx="95.11" cy="55.94" r="1.6" fill="#000080" stroke="none"/><circle cx="92.04" cy="67.41" r="1.6" fill="#000080" stroke="none"/><circle cx="86.10" cy="77.70" r="1.6" fill="#000080" stroke="none"/><circle cx="77.70" cy="86.10" r="1.6" fill="#000080" stroke="none"/><circle cx="67.41" cy="92.04" r="1.6" fill="#000080" stroke="none"/><circle cx="55.94" cy="95.11" r="1.6" fill="#000080" stroke="none"/><circle cx="44.06" cy="95.11" r="1.6" fill="#000080" stroke="none"/><circle cx="32.59" cy="92.04" r="1.6" fill="#000080" stroke="none"/><circle cx="22.30" cy="86.10" r="1.6" fill="#000080" stroke="none"/><circle cx="13.90" cy="77.70" r="1.6" fill="#000080" stroke="none"/><circle cx="7.96" cy="67.41" r="1.6" fill="#000080" stroke="none"/><circle cx="4.89" cy="55.94" r="1.6" fill="#000080" stroke="none"/><circle cx="4.89" cy="44.06" r="1.6" fill="#000080" stroke="none"/><circle cx="7.96" cy="32.59" r="1.6" fill="#000080" stroke="none"/><circle cx="13.90" cy="22.30" r="1.6" fill="#000080" stroke="none"/><circle cx="22.30" cy="13.90" r="1.6" fill="#000080" stroke="none"/><circle cx="32.59" cy="7.96" r="1.6" fill="#000080" stroke="none"/><circle cx="44.06" cy="4.89" r="1.6" fill="#000080" stroke="none"/><circle cx="55.94" cy="4.89" r="1.6" fill="#000080" stroke="none"/><circle cx="67.41" cy="7.96" r="1.6" fill="#000080" stroke="none"/><circle cx="77.70" cy="13.90" r="1.6" fill="#000080" stroke="none"/><circle cx="86.10" cy="22.30" r="1.6" fill="#000080" stroke="none"/><circle cx="92.04" cy="32.59" r="1.6" fill="#000080" stroke="none"/><circle cx="95.11" cy="44.06" r="1.6" fill="#000080" stroke="none"/></svg><span>Online Voting System</span></button>
+  <div class="links">
+    <button class="nl" data-go="vote">Vote</button>
+    <button class="nl" data-go="results">Results</button>
+    <button class="nl" data-go="about">About</button>
+    <button class="nl out hide" id="navLogout">Logout</button>
+  </div>
+</nav>
+
+<main class="shell" id="shell">
+  <aside class="hero">
+    <svg width="150" height="150" viewBox="0 0 150 150" role="img" aria-label="Ballot box">
+      <circle cx="75" cy="75" r="75" fill="#2b4a73"/>
+      <rect x="48" y="26" width="54" height="62" rx="4" fill="#fff"/>
+      <path d="M60 55 l10 10 l20 -22" fill="none" stroke="#2a7f62" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+      <rect x="28" y="76" width="94" height="50" rx="8" fill="#2a7f62" stroke="#fff" stroke-width="4"/>
+      <rect x="55" y="96" width="40" height="8" rx="4" fill="#1c3557"/>
+    </svg>
+    <h2>Your Vote Matters</h2>
+    <p>Participate in elections securely and make your voice count.</p>
+    <div class="slogan">VOTE BY YOUR OWN<span></span></div>
+    <div class="jai">JAI BHARAT</div>
+  </aside>
+
+  <section class="panel">
+
+    <!-- LOGIN -->
+    <div class="view" id="v-login">
+      <div class="card">
+        <h2>Welcome Back</h2>
+        <p class="sub">Sign in to continue to your account.</p>
+        <div id="loginNote" class="msg warn hide"></div>
+        <label for="role">Login as</label>
+        <select id="role"><option value="voter">Voter</option><option value="officer">Officer</option></select>
+        <label for="lid" id="idLabel">Voter ID</label>
+        <input id="lid" autocomplete="username" autocapitalize="characters">
+        <label for="lpw">Password</label>
+        <div class="pw">
+          <input id="lpw" type="password" autocomplete="current-password">
+          <button type="button" class="eye" id="eye" aria-label="Show password">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div id="loginErr" class="msg err hide" role="alert"></div>
+        <button class="btn" id="loginBtn">LOGIN</button>
+        <div class="help" id="helpVoter">Voters are registered by the election officer. Ask your officer for your voter ID and password.</div>
+        <div class="help hide" id="helpOfficer">New officer?<button class="btn ghost" id="toRegister">Register as Officer</button></div>
+        <div class="secure">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          <div><b>Secure Login</b><small>Your account information is protected.</small></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OFFICER REGISTER -->
+    <div class="view hide" id="v-register">
+      <div class="card">
+        <h2>Officer Registration</h2>
+        <p class="sub">Only officers with the registration key can create an officer account.</p>
+        <label for="rkey">Officer registration key</label>
+        <input id="rkey" type="password" autocomplete="off">
+        <label for="rid">Officer ID</label>
+        <input id="rid" autocomplete="off" autocapitalize="characters" placeholder="e.g. OFFICER01">
+        <label for="rname">Full name</label>
+        <input id="rname" autocomplete="name">
+        <label for="rpw">Password</label>
+        <input id="rpw" type="password" autocomplete="new-password" placeholder="At least 6 characters">
+        <label for="rpw2">Confirm password</label>
+        <input id="rpw2" type="password" autocomplete="new-password">
+        <div id="regMsg" class="msg hide" role="alert"></div>
+        <button class="btn" id="regBtn">Register</button>
+        <div style="text-align:center"><button class="linkbtn" id="regBack">Back to login</button></div>
+      </div>
+    </div>
+
+    <!-- VOTE -->
+    <div class="view hide" id="v-vote">
+      <div class="card">
+        <h2 id="vWelcome">Cast your vote</h2>
+        <p class="sub" id="vSub">Select one option. You can vote only once.</p>
+        <div id="ballot">
+          <button class="opt" data-party="BJP"><i style="background:var(--bjp)"></i>BJP</button>
+          <button class="opt" data-party="CONGRESS"><i style="background:var(--inc)"></i>CONGRESS</button>
+          <button class="opt" data-party="NOTA"><i style="background:var(--nota)"></i>NOTA</button>
+          <button class="btn" id="castBtn">Cast my vote</button>
+        </div>
+        <div id="voteMsg" class="msg hide" role="alert"></div>
+      </div>
+    </div>
+
+    <!-- OFFICER DASHBOARD -->
+    <div class="view hide" id="v-dash">
+      <div class="card">
+        <h2 id="dWelcome">Officer Dashboard</h2>
+        <p class="sub">Only election officers can see this page.</p>
+        <div class="tabs">
+          <button class="tab active" data-tab="results">Vote count</button>
+          <button class="tab" data-tab="voters">Manage voters</button>
+        </div>
+
+        <div id="t-results">
+          <div id="bars"></div>
+          <div class="total" id="tot"></div>
+        </div>
+
+        <div id="t-voters" class="hide">
+          <h3>Add a voter</h3>
+          <div class="addrow">
+            <div><label for="nvid">Voter ID</label><input id="nvid" autocomplete="off" autocapitalize="characters" placeholder="VOTER006"></div>
+            <div><label for="nvname">Full name</label><input id="nvname" autocomplete="off"></div>
+            <div><label for="nvpw">Password</label><input id="nvpw" autocomplete="off" placeholder="Min 6 characters"></div>
+            <button class="btn" id="addVoter">Add voter</button>
+          </div>
+          <div id="vlMsg" class="msg hide" role="alert"></div>
+          <h3>Voters list</h3>
+          <div class="tablewrap">
+            <table>
+              <thead><tr><th>Voter ID</th><th>Name</th><th>Status</th><th>Action</th></tr></thead>
+              <tbody id="vbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ABOUT -->
+    <div class="view hide" id="v-about">
+      <div class="card">
+        <h2>About</h2>
+        <p class="sub">A full stack web development project built with Node.js, Express and MongoDB.</p>
+        <p>Voters are registered by an election officer and each voter can vote only once. Only officers can view the vote count and add or delete voters. Officers can see who has voted, but never whom they voted for.</p>
+        <p>This is a demonstration project and is not connected to any real election.</p>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<footer>
+  <span class="jb">JAI BHARAT</span>
+  &copy; 2026 Online Voting System | Full Stack Web Development Project
+</footer>
+<div class="tricolor"></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const colors = { BJP: "var(--bjp)", CONGRESS: "var(--inc)", NOTA: "var(--nota)" };
+  let S = { token: null, role: null, id: null, name: null };
+  let timer = null, chosen = null;
+
+  // every request in this app is a plain GET
+  async function get(path, params = {}) {
+    try {
+      const r = await fetch(`/api/${path}?` + new URLSearchParams(params));
+      const d = await r.json();
+      if (d.expired) resetSession(d.message);
+      return d;
+    } catch (e) {
+      return { ok: false, message: "Cannot reach the server." };
+    }
+  }
+  function setMsg(el, text, kind) { el.textContent = text; el.className = "msg " + kind; }
+
+  /* ---------- views ---------- */
+  function show(name) {
+    document.querySelectorAll(".view").forEach((v) => v.classList.add("hide"));
+    $("v-" + name).classList.remove("hide");
+    $("shell").classList.toggle("wide", name === "dash");
+    clearInterval(timer);
+    const nav = { vote: "vote", dash: "results", about: "about" }[name];
+    document.querySelectorAll(".nl[data-go]").forEach((b) => b.classList.toggle("active", b.dataset.go === nav || (nav === "results" && b.dataset.go === "results")));
+    $("navLogout").classList.toggle("hide", !S.token);
+  }
+  function showLogin(note, role) {
+    if (role) $("role").value = role;
+    syncRole();
+    $("loginErr").classList.add("hide");
+    if (note) setMsg($("loginNote"), note, "warn"); else $("loginNote").classList.add("hide");
+    show("login");
+  }
+  function resetSession(note) {
+    S = { token: null, role: null, id: null, name: null };
+    showLogin(note || "");
+  }
+  function syncRole() {
+    const officer = $("role").value === "officer";
+    $("idLabel").textContent = officer ? "Officer ID" : "Voter ID";
+    $("helpVoter").classList.toggle("hide", officer);
+    $("helpOfficer").classList.toggle("hide", !officer);
+  }
+
+  /* ---------- login ---------- */
+  $("role").onchange = syncRole;
+  $("eye").onclick = () => { $("lpw").type = $("lpw").type === "password" ? "text" : "password"; };
+  ["lid", "lpw"].forEach((id) => $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") $("loginBtn").click(); }));
+
+  $("loginBtn").onclick = async () => {
+    const role = $("role").value;
+    const d = await get("login", { role, id: $("lid").value.trim(), password: $("lpw").value });
+    if (!d.ok) { setMsg($("loginErr"), d.message, "err"); return; }
+    S = { token: d.token, role: d.role, id: d.id, name: d.name };
+    $("lpw").value = "";
+    $("loginNote").classList.add("hide");
+    if (d.role === "voter") showVote(d.alreadyVoted); else showDash("results");
+  };
+
+  $("navLogout").onclick = async () => { await get("logout", { token: S.token }); resetSession("You have been logged out."); };
+
+  /* ---------- officer registration ---------- */
+  $("toRegister").onclick = () => { $("regMsg").classList.add("hide"); show("register"); };
+  $("regBack").onclick = () => showLogin("", "officer");
+  $("regBtn").onclick = async () => {
+    if ($("rpw").value !== $("rpw2").value) return setMsg($("regMsg"), "Passwords do not match.", "err");
+    const d = await get("officer/register", { key: $("rkey").value, id: $("rid").value.trim(), name: $("rname").value.trim(), password: $("rpw").value });
+    if (!d.ok) return setMsg($("regMsg"), d.message, "err");
+    ["rkey", "rpw", "rpw2", "rname"].forEach((i) => ($(i).value = ""));
+    const id = $("rid").value; $("rid").value = "";
+    showLogin("Officer registered. Log in with your new account.", "officer");
+    $("lid").value = id.toUpperCase();
+  };
+
+  /* ---------- voter: ballot ---------- */
+  function showVote(alreadyVoted) {
+    $("vWelcome").textContent = `Welcome, ${S.name}`;
+    $("vSub").textContent = `Voter ID: ${S.id}. Select one option. You can vote only once.`;
+    chosen = null;
+    document.querySelectorAll(".opt").forEach((b) => b.classList.remove("sel"));
+    $("voteMsg").classList.add("hide");
+    $("ballot").classList.toggle("hide", !!alreadyVoted);
+    if (alreadyVoted) setMsg($("voteMsg"), "You already voted.", "warn");
+    show("vote");
+  }
+  document.querySelectorAll(".opt").forEach((b) => {
+    b.onclick = () => {
+      chosen = b.dataset.party;
+      document.querySelectorAll(".opt").forEach((x) => x.classList.toggle("sel", x === b));
+    };
+  });
+  $("castBtn").onclick = async () => {
+    if (!chosen) return setMsg($("voteMsg"), "Select an option first.", "err");
+    if (!confirm(`Confirm your vote for ${chosen}? You cannot change it later.`)) return;
+    const d = await get("vote", { token: S.token, party: chosen });
+    if (d.expired) return;
+    $("ballot").classList.add("hide");
+    if (d.ok) {
+      $("voteMsg").className = "hide";
+      $("vSub").textContent = "";
+      $("voteMsg").className = "msg ok";
+      $("voteMsg").textContent = `${d.message} Thank you for voting. JAI BHARAT!`;
+    } else {
+      setMsg($("voteMsg"), d.message, d.alreadyVoted ? "warn" : "err");
+    }
+  };
+
+  /* ---------- officer dashboard ---------- */
+  function showDash(tab) {
+    $("dWelcome").textContent = `Officer Dashboard: ${S.name}`;
+    show("dash");
+    setTab(tab || "results");
+  }
+  function setTab(tab) {
+    clearInterval(timer);
+    document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("active", t.dataset.tab === tab));
+    $("t-results").classList.toggle("hide", tab !== "results");
+    $("t-voters").classList.toggle("hide", tab !== "voters");
+    if (tab === "results") { loadResults(); timer = setInterval(loadResults, 5000); } else loadVoters();
+  }
+  document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => setTab(t.dataset.tab)));
+
+  async function loadResults() {
+    const d = await get("officer/results", { token: S.token });
+    if (!d.ok) return;
+    $("bars").innerHTML = Object.entries(d.counts).map(([p, n]) => {
+      const pct = d.total ? Math.round((n / d.total) * 100) : 0;
+      return `<div class="row"><div class="top"><span>${esc(p)}</span><span>${n} vote${n === 1 ? "" : "s"}</span></div>
+              <div class="bar"><span style="width:${pct}%;background:${colors[p]}"></span></div></div>`;
+    }).join("");
+    $("tot").textContent = `${d.total} vote${d.total === 1 ? "" : "s"} cast. ${d.registered} registered voter${d.registered === 1 ? "" : "s"}. Updates every 5 seconds.`;
+  }
+
+  async function loadVoters() {
+    const d = await get("officer/voters", { token: S.token });
+    if (!d.ok) return;
+    $("vbody").innerHTML = d.voters.length
+      ? d.voters.map((v) => `<tr><td>${esc(v.id)}</td><td>${esc(v.name)}</td>
+          <td>${v.voted ? '<span class="pill ok">Voted</span>' : '<span class="pill">Not voted</span>'}</td>
+          <td><button class="del" data-id="${esc(v.id)}">Delete</button></td></tr>`).join("")
+      : '<tr><td colspan="4" class="empty">No voters yet. Add the first voter above.</td></tr>';
+  }
+
+  $("addVoter").onclick = async () => {
+    const d = await get("officer/voters/add", { token: S.token, id: $("nvid").value.trim(), name: $("nvname").value.trim(), password: $("nvpw").value });
+    if (d.expired) return;
+    setMsg($("vlMsg"), d.message, d.ok ? "ok" : "err");
+    if (d.ok) { ["nvid", "nvname", "nvpw"].forEach((i) => ($(i).value = "")); loadVoters(); }
+  };
+  $("vbody").onclick = async (e) => {
+    const id = e.target.dataset && e.target.dataset.id;
+    if (!id) return;
+    if (!confirm(`Delete voter ${id}? They will no longer be able to log in. A vote already cast stays counted.`)) return;
+    const d = await get("officer/voters/delete", { token: S.token, id });
+    if (d.expired) return;
+    setMsg($("vlMsg"), d.message, d.ok ? "ok" : "err");
+    loadVoters();
+  };
+
+  /* ---------- navigation ---------- */
+  document.querySelectorAll(".nl[data-go]").forEach((b) => {
+    b.onclick = () => {
+      const go = b.dataset.go;
+      if (go === "about") return show("about");
+      if (go === "vote") {
+        if (S.role === "voter") return showVote(false);
+        return showLogin(S.role === "officer" ? "Officers cannot vote. Log out to sign in as a voter." : "Log in as a voter to cast your vote.", "voter");
+      }
+      if (S.role === "officer") return showDash("results");
+      showLogin("Officer login is required to see the vote count.", "officer");
+    };
+  });
+  $("brand").onclick = () => { if (S.role === "voter") showVote(false); else if (S.role === "officer") showDash("results"); else showLogin(""); };
+
+  showLogin("");
+</script>
+</body>
+</html>

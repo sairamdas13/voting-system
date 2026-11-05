@@ -266,7 +266,8 @@
   // every request in this app is a plain GET
   async function get(path, params = {}) {
     try {
-      const r = await fetch(`/api/${path}?` + new URLSearchParams(params));
+      const headers = S.token ? { Authorization: "Bearer " + S.token } : {};   // JWT goes in the header
+      const r = await fetch(`/api/${path}?` + new URLSearchParams(params), { headers });
       const d = await r.json();
       if (d.expired) resetSession(d.message);
       return d;
@@ -319,7 +320,7 @@
     if (d.role === "voter") showVote(d.alreadyVoted); else showDash("results");
   };
 
-  $("navLogout").onclick = async () => { await get("logout", { token: S.token }); resetSession("You have been logged out."); };
+  $("navLogout").onclick = async () => { await get("logout"); resetSession("You have been logged out."); };
 
   /* ---------- officer registration ---------- */
   $("toRegister").onclick = () => { $("regMsg").classList.add("hide"); show("register"); };
@@ -354,7 +355,7 @@
   $("castBtn").onclick = async () => {
     if (!chosen) return setMsg($("voteMsg"), "Select an option first.", "err");
     if (!confirm(`Confirm your vote for ${chosen}? You cannot change it later.`)) return;
-    const d = await get("vote", { token: S.token, party: chosen });
+    const d = await get("vote", { party: chosen });
     if (d.expired) return;
     $("ballot").classList.add("hide");
     if (d.ok) {
@@ -383,7 +384,7 @@
   document.querySelectorAll(".tab").forEach((t) => (t.onclick = () => setTab(t.dataset.tab)));
 
   async function loadResults() {
-    const d = await get("officer/results", { token: S.token });
+    const d = await get("officer/results");
     if (!d.ok) return;
     $("bars").innerHTML = Object.entries(d.counts).map(([p, n]) => {
       const pct = d.total ? Math.round((n / d.total) * 100) : 0;
@@ -394,7 +395,7 @@
   }
 
   async function loadVoters() {
-    const d = await get("officer/voters", { token: S.token });
+    const d = await get("officer/voters");
     if (!d.ok) return;
     $("vbody").innerHTML = d.voters.length
       ? d.voters.map((v) => `<tr><td>${esc(v.id)}</td><td>${esc(v.name)}</td>
@@ -404,7 +405,7 @@
   }
 
   $("addVoter").onclick = async () => {
-    const d = await get("officer/voters/add", { token: S.token, id: $("nvid").value.trim(), name: $("nvname").value.trim(), password: $("nvpw").value });
+    const d = await get("officer/voters/add", { id: $("nvid").value.trim(), name: $("nvname").value.trim(), password: $("nvpw").value });
     if (d.expired) return;
     setMsg($("vlMsg"), d.message, d.ok ? "ok" : "err");
     if (d.ok) { ["nvid", "nvname", "nvpw"].forEach((i) => ($(i).value = "")); loadVoters(); }
@@ -413,7 +414,7 @@
     const id = e.target.dataset && e.target.dataset.id;
     if (!id) return;
     if (!confirm(`Delete voter ${id}? They will no longer be able to log in. A vote already cast stays counted.`)) return;
-    const d = await get("officer/voters/delete", { token: S.token, id });
+    const d = await get("officer/voters/delete", { id });
     if (d.expired) return;
     setMsg($("vlMsg"), d.message, d.ok ? "ok" : "err");
     loadVoters();

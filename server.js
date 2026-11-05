@@ -3,13 +3,15 @@ const express = require("express");
 const crypto = require("crypto");
 const path = require("path");
 const { MongoClient } = require("mongodb");
+const jwt = require("jsonwebtoken");
 
 const PORT = process.env.PORT || 3000;
 const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017";
 const OFFICER_KEY = process.env.OFFICER_KEY || "";   // secret key needed to register as officer
+const JWT_SECRET = process.env.JWT_SECRET || "";     // secret used to sign login tokens (JWT)
 const DB_NAME = "votingdb";
 const PARTIES = ["BJP", "CONGRESS", "NOTA"];
-const SESSION_MS = 2 * 60 * 60 * 1000;               // 2 hours
+const TOKEN_LIFE = "2h";                             // JWT expires after 2 hours
 const ID_RE = /^[A-Za-z0-9_-]{3,20}$/;
 
 // ---------- password hashing (scrypt + random salt) ----------
@@ -25,20 +27,27 @@ function checkPassword(pw, stored) {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
-// ---------- sessions (in memory) ----------
-const sessions = new Map();
-function newSession(role, id, name) {
-  const token = crypto.randomBytes(24).toString("hex");
-  sessions.set(token, { role, id, name, exp: Date.now() + SESSION_MS });
-  return token;
+// ---------- JWT login tokens ----------
+// The token is signed with JWT_SECRET. It carries the role, id and name, and expires after 2 hours.
+// The browser sends it in the "Authorization: Bearer <token>" header.
+if (JWT_SECRET.length < 16) {
+  console.error("JWT_SECRET is missing or too short. Add JWT_SECRET (at least 16 characters) to your .env or Render environment.");
+  process.exit(1);
 }
-function getSession(token, role) {
-  const s = sessions.get(token);
-  if (!s) return null;
-  if (s.exp < Date.now()) { sessions.delete(token); return null; }
-  return !role || s.role === role ? s : null;
+function signToken(role, id, name) {
+  return jwt.sign({ role, id, name }, JWT_SECRET, { algorithm: "HS256", expiresIn: TOKEN_LIFE });
 }
-setInterval(() => { for (const [t, s] of sessions) if (s.exp < Date.now()) sessions.delete(t); }, 600000).unref();
+function getSession(req, role) {
+  const header = req.headers.authorization || "";
+  const token = header.startsWith("Bearer ") ? header.slice(7) : "";
+  if (!token) return null;
+  try {
+    const p = jwt.verify(token, JWT_SECRET, { algorithms: ["HS256"] });
+    return !role || p.role === role ? p : null;
+  } catch (e) {
+    return null;            // bad signature, tampered or expired
+  }
+}
 
 // ---------- simple brute-force lock: 5 failures = 10 minute lock ----------
 const fails = new Map();
@@ -64,7 +73,7 @@ const wrap = (fn) => (req, res) =>
     res.status(500).json({ ok: false, message: "Server error. Please try again." });
   });
 function needOfficer(req, res) {
-  const s = getSession(q(req, "token"), "officer");
+  const s = getSession(req, "officer");
   if (!s) res.status(401).json({ ok: false, expired: true, message: "Session expired. Please log in again." });
   return s;
 }
@@ -110,21 +119,18 @@ app.use(express.static(path.join(__dirname, "public")));
       return res.status(401).json({ ok: false, message: "Invalid ID or password." });
     }
     fails.delete(lockKey);
-    const out = { ok: true, token: newSession(role, id, user.name), role, id, name: user.name };
+    const out = { ok: true, token: signToken(role, id, user.name), role, id, name: user.name };
     if (role === "voter") out.alreadyVoted = !!(await votes.findOne({ voterId: id }));
     res.json(out);
   }));
 
-  // GET /api/logout?token=...
-  app.get("/api/logout", (req, res) => {
-    sessions.delete(q(req, "token"));
-    res.json({ ok: true });
-  });
+  // GET /api/logout   (a JWT is stateless, so the browser just throws its token away)
+  app.get("/api/logout", (req, res) => res.json({ ok: true }));
 
   // ================= VOTING (voters only) =================
-  // GET /api/vote?token=...&party=BJP
+  // GET /api/vote?party=BJP   (needs the voter's JWT in the Authorization header)
   app.get("/api/vote", wrap(async (req, res) => {
-    const s = getSession(q(req, "token"), "voter");
+    const s = getSession(req, "voter");
     if (!s) return res.status(401).json({ ok: false, expired: true, message: "Session expired. Please log in again." });
 
     const party = q(req, "party").toUpperCase();
@@ -132,7 +138,6 @@ app.use(express.static(path.join(__dirname, "public")));
 
     // the voter must still be on the list (officer may have deleted them)
     if (!(await voters.findOne({ voterId: s.id }))) {
-      sessions.delete(q(req, "token"));
       return res.status(403).json({ ok: false, expired: true, message: "You are not on the voters list." });
     }
     try {
@@ -171,7 +176,7 @@ app.use(express.static(path.join(__dirname, "public")));
     }
   }));
 
-  // GET /api/officer/results?token=...
+  // GET /api/officer/results
   app.get("/api/officer/results", wrap(async (req, res) => {
     if (!needOfficer(req, res)) return;
     const counts = {};
@@ -180,7 +185,7 @@ app.use(express.static(path.join(__dirname, "public")));
     res.json({ ok: true, counts, total, registered: await voters.countDocuments() });
   }));
 
-  // GET /api/officer/voters?token=...   (shows who has voted, never whom they voted for)
+  // GET /api/officer/voters   (shows who has voted, never whom they voted for)
   app.get("/api/officer/voters", wrap(async (req, res) => {
     if (!needOfficer(req, res)) return;
     const list = await voters.find({}, { projection: { voterId: 1, name: 1 } }).sort({ voterId: 1 }).toArray();
@@ -188,7 +193,7 @@ app.use(express.static(path.join(__dirname, "public")));
     res.json({ ok: true, voters: list.map((v) => ({ id: v.voterId, name: v.name, voted: done.has(v.voterId) })) });
   }));
 
-  // GET /api/officer/voters/add?token=...&id=...&name=...&password=...
+  // GET /api/officer/voters/add?id=...&name=...&password=...
   app.get("/api/officer/voters/add", wrap(async (req, res) => {
     if (!needOfficer(req, res)) return;
     const id = cleanId(q(req, "id")), name = q(req, "name").trim(), password = q(req, "password");
@@ -203,13 +208,12 @@ app.use(express.static(path.join(__dirname, "public")));
     }
   }));
 
-  // GET /api/officer/voters/delete?token=...&id=...
+  // GET /api/officer/voters/delete?id=...
   app.get("/api/officer/voters/delete", wrap(async (req, res) => {
     if (!needOfficer(req, res)) return;
     const id = cleanId(q(req, "id"));
     const r = await voters.deleteOne({ voterId: id });
     if (!r.deletedCount) return res.status(404).json({ ok: false, message: "Voter not found." });
-    for (const [t, s] of sessions) if (s.role === "voter" && s.id === id) sessions.delete(t);
     res.json({ ok: true, message: `Voter ${id} deleted.` });
   }));
 
